@@ -1,0 +1,29 @@
+# build artifacts
+.ufbt/
+dist/
+build/
+out/
+*.o
+*_d.elf
+*.fap
+
+# python
+__pycache__/
+*.pyc
+
+# editor / IDE (may contain absolute local paths)
+.vscode/
+.idea/
+compile_commands.json
+
+# captured tag dumps and diagnostic logs (may contain real credentials — never commit)
+*.hitag
+*log*.txt
+emulog_*.txt
+snifflog_*.txt
+emuscope_*.txt
+realscope_*.txt
+autotune_*.txt
+nonces_*.txt
+
+.DS_Store
