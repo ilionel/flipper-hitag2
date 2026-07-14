@@ -1,0 +1,24 @@
+App(
+    appid="hitag",
+    name="Hitag",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="hitag_app",
+    requires=["gui", "dialogs", "notification"],
+    stack_size=4 * 1024,
+    # Explicit sources: otherwise ufbt globs recursively and pulls test/*.c into the FAP.
+    sources=[
+        "hitag_app.c",
+        "hitag_menu.c",
+        "hitag_worker.c",
+        "hitag1.c",
+        "hitag2.c",
+        "hitags.c",
+        "buffer_stream.c",
+        "varint_pair.c",
+        "hitag_frames.c",
+        "hitag2_cipher.c",
+    ],
+    fap_icon="icon.png",
+    fap_category="RFID",
+    fap_description="Hitag1/Hitag2 (125kHz LF) read / sniff / emulate. Requires the RTF-HAL firmware.",
+)
