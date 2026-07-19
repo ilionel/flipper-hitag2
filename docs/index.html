@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hitag for Flipper Zero — an experimental Hitag2 / Hitag S read &amp; emulate research project</title>
+<meta name="description" content="Experimental Flipper Zero research: reading, sniffing and emulating Hitag2 (125 kHz LF) password-mode transponders you own. Proof of concept, not a product." />
+<style>
+  :root { --bg:#0e0f13; --card:#171922; --fg:#e8e9ee; --muted:#9aa0ad; --accent:#ff8200; --line:#262936; --purple:#b98bff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  a { color:var(--accent); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .wrap { max-width:880px; margin:0 auto; padding:0 20px; }
+  header { text-align:center; padding:60px 20px 36px; border-bottom:1px solid var(--line); }
+  h1 { font-size:2.4rem; margin:0 0 10px; }
+  .badge { display:inline-block; margin:0 0 16px; padding:4px 12px; border-radius:999px; font-size:.82rem; font-weight:600; letter-spacing:.02em; color:var(--purple); background:#1a1430; border:1px solid #362a5c; }
+  .tag { color:var(--muted); font-size:1.15rem; margin:0 auto 26px; max-width:610px; }
+  .btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn { display:inline-block; padding:11px 20px; border-radius:10px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  .btn.primary { background:var(--accent); color:#1a1206; border-color:var(--accent); }
+  section { padding:44px 0; border-bottom:1px solid var(--line); }
+  h2 { font-size:1.5rem; margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  .card h3 { margin:0 0 6px; font-size:1.05rem; }
+  .card p { margin:0; color:var(--muted); font-size:.95rem; }
+  ol { padding-left:22px; } li { margin:8px 0; }
+  ul.lim { list-style:none; padding:0; margin:0; }
+  ul.lim li { position:relative; padding:10px 0 10px 26px; border-top:1px solid var(--line); color:var(--muted); }
+  ul.lim li:first-child { border-top:0; }
+  ul.lim li::before { content:"⚠"; position:absolute; left:0; color:var(--accent); }
+  ul.lim strong { color:var(--fg); }
+  .shots { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+  .shots figure { margin:0; }
+  .shots img { width:100%; image-rendering:pixelated; border:1px solid var(--line); border-radius:8px; display:block; }
+  .shots figcaption { color:var(--muted); font-size:.9rem; margin-top:8px; text-align:center; }
+  code { background:#000; border:1px solid var(--line); border-radius:6px; padding:2px 6px; font-size:.9em; }
+  .exp { background:#161129; border:1px solid #362a5c; border-radius:12px; padding:16px 18px; color:#d9cdf3; }
+  .exp strong { color:#fff; }
+  .note { background:#1d150a; border:1px solid #43300f; border-radius:10px; padding:14px 16px; color:#f3d9b0; font-size:.95rem; }
+  .warn { background:#1c1013; border:1px solid #4a1f27; border-radius:10px; padding:14px 16px; color:#f3b0bd; font-size:.95rem; }
+  footer { text-align:center; color:var(--muted); padding:32px 20px 64px; font-size:.9rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="badge">⚗️ EXPERIMENTAL · RESEARCH PROJECT</span>
+    <h1>🔑 Hitag for Flipper Zero</h1>
+    <p class="tag">A reverse-engineering project that reads, sniffs and — for the first time on a Flipper — <strong>emulates</strong> Hitag2 and <strong>Hitag&nbsp;S</strong> (125&nbsp;kHz&nbsp;LF) transponders, including <strong>password</strong> and <strong>crypto</strong> modes. A proof of concept, not a polished product: it works, but it is fiddly, coupling-sensitive, and needs a patched firmware. For tags and readers <strong>you own</strong>.</p>
+    <div class="btns">
+      <a class="btn primary" id="gh" href="#">Source &amp; write-up</a>
+      <a class="btn" id="dl" href="#install">⬇ Download .fap</a>
+      <a class="btn" id="ref" href="#research">📖 Reference</a>
+    </div>
+  </div>
+</header>
+
+<section><div class="wrap">
+  <div class="exp">
+    ⚗️ <strong>This is an experiment, not a product.</strong> It came out of reverse-engineering how the
+    Flipper's 125&nbsp;kHz front end can be made to <em>emulate</em> a Hitag2 tag — something no mainline
+    firmware does. It has genuinely worked against real readers, but success depends on marginal analog
+    coupling and on a firmware patch you must flash yourself. Expect to tinker. Read the
+    <a href="#limits">limitations</a> before you rely on it for anything.
+  </div>
+</div></section>
+
+<section id="research"><div class="wrap">
+  <h2>The research</h2>
+  <p>No mainline Flipper firmware (official, Momentum, Unleashed, RogueMaster) supports Hitag2 read or
+  emulate. The only public prior art is the unmerged Hitag1 / reader-talks-first (RTF) pull request
+  <a href="https://github.com/flipperdevices/flipperzero-firmware/pull/2658">flipperzero-firmware&nbsp;#2658</a>.
+  This project extends that base to <strong>Hitag2 (password + crypto)</strong>, a full <strong>Hitag&nbsp;S</strong>
+  implementation, and — most interestingly — <strong>tag emulation</strong> that drives the coil's load
+  modulation to answer a real reader.</p>
+  <div class="grid" style="margin-top:18px">
+    <div class="card"><h3>The framing discovery</h3><p>The reader strips a fixed-length start-of-frame, then reads the rest as data. Matching the preamble to that length and sending the <strong>raw 32 bits</strong> (dropping an earlier leadbit hack that lost bit&nbsp;31, e.g. <code>0xAA&nbsp;→&nbsp;0x2A</code>) makes every page read back faithfully — the key that unlocked crypto reads too.</p></div>
+    <div class="card"><h3>Timing, not luck</h3><p>Emulation only works if the reply lands inside the strict Hitag2 window. An in-app autotune sweeps the reply delay and locks on the first timing that completes — repeatable across readers.</p></div>
+    <div class="card"><h3>Validated on a Proxmark3</h3><p>Every step was cross-checked with a Proxmark3 as the reference reader (<code>lf hitag read --ht2</code>), which reads the emulated tag back exactly — the ground truth behind the claims here.</p></div>
+    <div class="card"><h3>It's LF, not NFC</h3><p>Hitag2 is 125&nbsp;kHz — nothing to do with the Flipper's 13.56&nbsp;MHz NFC chip. It all runs on the STM32WB: a timer makes the carrier, the analog comparator demodulates, a pull&#8209;out pin does the load modulation.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card"><h3>Read &amp; Sniff</h3><p>Read a Hitag2 password-mode tag (UID, password, 8 pages), or passively sniff a real reader: recover its <strong>password</strong>, collect Hitag2 <strong>crypto nonces</strong> for a PC cracker, or capture a Hitag&nbsp;S <strong>82xx password</strong>. Save/load <code>.hitag</code> dumps.</p></div>
+    <div class="card"><h3>Emulate Hitag2</h3><p>Play a dump back to a reader with a live AUTH / PWD / RD readout. Password mode (Normal / Tolerant, Auto-timing) and a separate <strong>crypto mode</strong> — full <code>nRaR</code> mutual auth with the 48-bit cipher, then encrypted reads.</p></div>
+    <div class="card"><h3>Emulate Hitag&nbsp;S</h3><p>A complete Hitag&nbsp;S tag: <code>UID_REQ → SELECT → READ / WRITE</code> across all four reader modes, plus crypto/challenge, 8268/8310 password, and enforced config lock bits.</p></div>
+    <div class="card"><h3>Detect &amp; keys</h3><p>Detect auto-rotates Hitag2 / Hitag1 / Hitag&nbsp;S. Edit the Hitag2 password, the Hitag&nbsp;S crypto key and the 82xx password from the menu. Diagnostic traces are off by default, behind a debug toggle.</p></div>
+    <div class="card"><h3>Basic Hitag1</h3><p>A Read Hitag1 mode is carried over from the RTF base — but no Hitag1 tag was on hand to test it, so treat V1 as untested (see limitations).</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Screens</h2>
+  <div class="shots">
+    <figure><img src="img/menu.png" alt="Main menu" /><figcaption>Main menu</figcaption></figure>
+    <figure><img src="img/emulate.png" alt="Emulate Hitag2" /><figcaption>Emulate Hitag2 — live AUTH / PWD / RD readout</figcaption></figure>
+    <figure><img src="img/emulate_hts.png" alt="Emulate Hitag S" /><figcaption>Emulate Hitag S — with the coupling hint</figcaption></figure>
+    <figure><img src="img/settings.png" alt="Emulation settings" /><figcaption>Emulation settings (incl. Debug traces)</figcaption></figure>
+    <figure><img src="img/htskey.png" alt="Hitag S key editor" /><figcaption>Editable Hitag S crypto key</figcaption></figure>
+    <figure><img src="img/password.png" alt="Password editor" /><figcaption>Password editor (factory-default MIKR)</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="limits"><div class="wrap">
+  <h2>Limitations &amp; caveats</h2>
+  <ul class="lim">
+    <li><strong>Not a drop-in FAP.</strong> It needs a firmware HAL that the stock SDK lacks, so you must build and flash a <strong>patched firmware</strong> — not just copy a <code>.fap</code>.</li>
+    <li><strong>Coupling is marginal and position-sensitive.</strong> LF emulation depends on analog load modulation; a few millimetres change everything. On some readers it completes readily, on others only in a narrow sweet spot — and it may not couple at all. <strong>When nothing comes through, slowly move the tag — or the Flipper — relative to each other, a millimetre at a time, until it couples;</strong> finding the sweet spot is a physical hunt, not a setting.</li>
+    <li><strong>Readers vary.</strong> A strict reader can reject a reply that a Proxmark3 accepts. The Tolerant and Auto-timing modes exist precisely because there is no single setting that works everywhere.</li>
+    <li><strong>Emulation-first.</strong> The Hitag&nbsp;S and Hitag2-crypto work is validated as a <em>tag</em> against a reader (Proxmark3). Reading a Hitag&nbsp;S <em>as the reader</em> implements UID + SELECT only; the full page loop is coupling-limited.</li>
+    <li><strong>Hitag1 barely covered.</strong> No Hitag1 tag was available during development, so Hitag1 could not be exercised: <strong>Read Hitag1</strong> is wired but untested, and a Hitag1 sniff is not provided.</li>
+    <li><strong>Proof of concept.</strong> Validated on a Proxmark3 and a handful of real readers — not broadly tested. No guarantee it works with your specific hardware.</li>
+    <li><strong>Diagnostics are opt-in.</strong> Timing/handshake logs are <strong>off by default</strong>; a <em>Debug traces</em> toggle writes them to the SD card when you want to debug a reader.</li>
+  </ul>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>Install</h2>
+  <p class="warn"><strong>Two parts.</strong> Hitag2 LF emulation needs a small firmware HAL that the stock SDK lacks, so unlike a normal FAP you must <strong>also flash a patched firmware</strong>. The <code>.fap</code> alone will not run.</p>
+  <ol>
+    <li><strong>Firmware.</strong> Apply <a id="fwreadme" href="#">firmware/rtf-hal.patch</a> to a <a href="https://github.com/Next-Flip/Momentum-Firmware">Momentum</a> tree, then build &amp; flash it (<code>./fbt flash_usb</code>). The patch is additive (an RTF HAL) and self-contained.</li>
+    <li><strong>App.</strong> Build the FAP against that patched SDK, or grab the prebuilt <code>.fap</code> from the <a id="rel" href="#">latest release</a>.</li>
+    <li>Copy the <code>.fap</code> into <code>SD&nbsp;Card / apps / RFID</code> (or install with <a href="https://lab.flipper.net/">qFlipper</a>).</li>
+    <li>On the Flipper: <strong>Apps → RFID → Hitag</strong>.</li>
+    <li>Lay the tag (or the reader) against the <strong>bottom/USB-C end of the Flipper</strong>, where the 125&nbsp;kHz coil is, and pick an action. Coupling is position-sensitive: <strong>if nothing happens, slowly move the tag or the Flipper relative to each other until it couples</strong> — when emulating, watch the live <code>AUTH</code> counter and keep repositioning until it climbs.</li>
+  </ol>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Credits</h2>
+  <div class="card">
+    <p style="margin-top:0">This project builds on prior open Flipper LF work — with thanks to:</p>
+    <ul style="margin-bottom:0">
+      <li><a href="https://github.com/flipperdevices/flipperzero-firmware/pull/2658">flipperzero-firmware #2658</a> — the Hitag1 + reader-talks-first (RTF) HAL this extends to Hitag2.</li>
+      <li><a href="https://github.com/Next-Flip/Momentum-Firmware">Momentum firmware</a> — the base it is built and tested on.</li>
+      <li><a href="https://github.com/RfidResearchGroup/proxmark3">Proxmark3 (Iceman)</a> — the reference Hitag2 reader used to validate the emulation.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Legal &amp; ethical use</h2>
+  <p style="color:var(--muted)">Independent, unofficial research project, provided "as is". Use it <strong>only</strong> on transponders and readers you own or are explicitly authorized to test. Cloning or emulating access credentials you do not own may be illegal in your jurisdiction. The default password shown is the public, documented NXP factory-default value — not a secret. No manufacturer firmware, artwork or logo is included.</p>
+</div></section>
+
+<footer>
+  <span id="foot">GPL-3.0 licensed · Independent research project</span>
+</footer>
+
+<script>
+  // Derive owner/repo from the GitHub Pages URL so the links work without editing.
+  (function () {
+    var host = location.hostname, parts = location.pathname.split('/').filter(Boolean);
+    var owner = host.endsWith('github.io') ? host.split('.')[0] : null;
+    var repo = parts.length ? parts[0] : null;
+    if (owner && repo) {
+      var base = 'https://github.com/' + owner + '/' + repo;
+      document.getElementById('gh').href = base;
+      document.getElementById('rel').href = base + '/releases/latest';
+      document.getElementById('dl').href = base + '/releases/latest';
+      document.getElementById('fwreadme').href = base + '/blob/main/firmware/rtf-hal.patch';
+      document.getElementById('ref').href = base + '/blob/main/docs/REFERENCE.md';
+      document.getElementById('foot').innerHTML = 'GPL-3.0 licensed · <a href="' + base + '">' + owner + '/' + repo + '</a>';
+    }
+  })();
+</script>
+</body>
+</html>
