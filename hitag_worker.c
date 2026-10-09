@@ -1403,10 +1403,7 @@ static int32_t hitag_worker_emulate_thread(void* thread_context) {
                                     if(sniff_cnt >= 2 &&
                                        worker->workerstatus != HitagStatusRead) {
                                         //store the sniffed password into Hitag2 page 1 (RWD)
-                                        worker->tag->pageData[1 * 4 + 0] = pw >> 24 & 0xff;
-                                        worker->tag->pageData[1 * 4 + 1] = pw >> 16 & 0xff;
-                                        worker->tag->pageData[1 * 4 + 2] = pw >> 8 & 0xff;
-                                        worker->tag->pageData[1 * 4 + 3] = pw & 0xff;
+                                        hitag_store_page(worker->tag->pageData, 1, pw);
                                         worker->tag->pageKnown[1] = 1;
                                         hitag_worker_combine_tag_data(worker->tag);
                                         dolphin_deed(DolphinDeedRfidReadSuccess);
@@ -1587,7 +1584,7 @@ static int32_t hitag_worker_emulate_thread(void* thread_context) {
                                     if(pg < 8) {
                                         //Reply = Hitag2 SOF (preamble ones) + 32 Manchester data
                                         //bits, matching the tag side of PM3 hitag_send_frame.
-                                        //Preamble length is tunable for bench A/B (default 5).
+                                        //Preamble length is tunable for bench A/B (default 4).
                                         uint8_t pre = worker->emu_preamble;
                                         if(pre == 0 || pre > 16) pre = 5;
                                         uint8_t k = 0;

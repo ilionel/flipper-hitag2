@@ -130,7 +130,7 @@ uint8_t hitag_worker_get_nonces(
 bool hitag_worker_get_sniff_82xx(HitagWorker* worker, uint8_t pwd[4]);
 
 /**
- * @brief Tune the Hitag2 emulate reply: preamble length (default 5), T_wresp in us
+ * @brief Tune the Hitag2 emulate reply: preamble length (default 4), T_wresp in us
  *        (default 1664), and leadbit (1 = prepend a '0' data bit for a clean
  *        preamble/data boundary). For bench A/B of the framing shift, no reflash.
  */

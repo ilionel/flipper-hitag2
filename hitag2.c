@@ -284,10 +284,7 @@ int32_t hitag2_worker_read_thread(void* thread_context) {
                                 if(cfg_cnt >= 2) {
                                     config_val = val;
                                     config_known = true;
-                                    worker->tag->pageData[3 * 4 + 0] = val >> 24 & 0xff;
-                                    worker->tag->pageData[3 * 4 + 1] = val >> 16 & 0xff;
-                                    worker->tag->pageData[3 * 4 + 2] = val >> 8 & 0xff;
-                                    worker->tag->pageData[3 * 4 + 3] = val & 0xff;
+                                    hitag_store_page(worker->tag->pageData, 3, val);
                                     worker->tag->pageKnown[3] = 1;
                                 }
                             }
@@ -305,10 +302,7 @@ int32_t hitag2_worker_read_thread(void* thread_context) {
                                     uid_known = true;
                                     dolphin_deed(DolphinDeedRfidReadSuccess);
                                     worker->workerstatus = HitagStatusDetected;
-                                    worker->tag->pageData[0] = val >> 24 & 0xff;
-                                    worker->tag->pageData[1] = val >> 16 & 0xff;
-                                    worker->tag->pageData[2] = val >> 8 & 0xff;
-                                    worker->tag->pageData[3] = val & 0xff;
+                                    hitag_store_page(worker->tag->pageData, 0, val);
                                     worker->tag->pageKnown[0] = 1;
                                     //start reading the remaining pages
                                     target = 1;
@@ -364,10 +358,7 @@ int32_t hitag2_worker_read_thread(void* thread_context) {
                             }
 
                             if(pg < 8) {
-                                worker->tag->pageData[pg * 4 + 0] = val >> 24 & 0xff;
-                                worker->tag->pageData[pg * 4 + 1] = val >> 16 & 0xff;
-                                worker->tag->pageData[pg * 4 + 2] = val >> 8 & 0xff;
-                                worker->tag->pageData[pg * 4 + 3] = val & 0xff;
+                                hitag_store_page(worker->tag->pageData, pg, val);
                                 worker->tag->pageKnown[pg] = 1;
 
                                 if(advance) {

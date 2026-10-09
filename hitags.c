@@ -204,10 +204,7 @@ int32_t hitags_worker_read_thread(void* thread_context) {
                             uid_known = true;
                             dolphin_deed(DolphinDeedRfidReadSuccess);
                             worker->workerstatus = HitagStatusDetected;
-                            worker->tag->pageData[0] = val >> 24 & 0xff;
-                            worker->tag->pageData[1] = val >> 16 & 0xff;
-                            worker->tag->pageData[2] = val >> 8 & 0xff;
-                            worker->tag->pageData[3] = val & 0xff;
+                            hitag_store_page(worker->tag->pageData, 0, val);
                             worker->tag->pageKnown[0] = 1;
                             hitag_worker_combine_tag_data(worker->tag);
                             FURI_LOG_D(TAG, "hts UID = %08lX", (unsigned long)val);
@@ -261,10 +258,7 @@ int32_t hitags_worker_read_thread(void* thread_context) {
                         }
                         if(cfg_cnt >= 2) {
                             cfg_known = true;
-                            worker->tag->pageData[4] = cval >> 24 & 0xff;
-                            worker->tag->pageData[5] = cval >> 16 & 0xff;
-                            worker->tag->pageData[6] = cval >> 8 & 0xff;
-                            worker->tag->pageData[7] = cval & 0xff;
+                            hitag_store_page(worker->tag->pageData, 1, cval);
                             worker->tag->pageKnown[1] = 1;
                             hitag_worker_combine_tag_data(worker->tag);
                             worker->workerstatus = HitagStatusRead;

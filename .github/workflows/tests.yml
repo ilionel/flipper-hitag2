@@ -1,0 +1,19 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Off-device unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The pure modules (frame classifier, CRC-8, Hitag2 cipher) build and run on a
+      # plain host toolchain — no Flipper SDK needed. Warnings are errors here so a
+      # regression in these critical modules fails the build.
+      - name: Build & run (warnings as errors)
+        run: make -C test CFLAGS="-O2 -Wall -Wextra -Werror -std=c11"

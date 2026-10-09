@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+- **CI.** A GitHub Actions workflow now builds and runs the off-device unit tests
+  (frame classifier, CRC-8, Hitag2 cipher) with warnings-as-errors on every push and
+  pull request — no Flipper SDK needed, so regressions in those critical pure modules
+  fail the build.
+- **Internal cleanup (no behaviour change).** The 32-bit page byte-split repeated across
+  the read/sniff paths is now a single `hitag_store_page()` helper (6 call sites), and the
+  two command-log writers share one scratch buffer instead of a per-function copy
+  (−1.25 KB BSS). Fixed a few stale comments (emulate preamble default, autotune log header).
+
 ## 1.6
 - **Persistent settings.** The keys/passwords (Hitag2 password, Hitag S key, 82xx pwd),
   the emulate tuning (Mode / Timing / `T_wresp`) and the Debug toggles now survive a

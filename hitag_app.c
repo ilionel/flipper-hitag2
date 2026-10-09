@@ -635,18 +635,21 @@ static void hitag_timestamp(char* out, size_t n) {
 // Decode the captured reader commands into a human-readable .txt on SD. Used by both
 // sniff (reader<->real badge) and emulate (reader<->Flipper, to see how far the handshake
 // gets). label = the header line; path = full destination.
+// Shared scratch for the two command-log writers (1.25KB). File-scope statics instead of a
+// per-function copy in each: both only ever run on the GUI thread, sequentially and never
+// re-entrant (hitag_save_sniff_log reads its password out before calling hitag_write_cmd_log,
+// which then refills these). Keeps the stack bounded without duplicating the buffer.
+static uint8_t g_cmdlog_lens[HITAG_SNIFF_LOG_MAX];
+static uint32_t g_cmdlog_vals[HITAG_SNIFF_LOG_MAX];
+
 static void hitag_write_cmd_log(HitagApp* app, const char* label, const char* path) {
-    // static (1.25KB) to keep the stack bounded: this is nested inside hitag_save_sniff_log
-    // and only ever runs on the GUI thread (sequential, not re-entrant).
-    static uint8_t lens[HITAG_SNIFF_LOG_MAX];
-    static uint32_t vals[HITAG_SNIFF_LOG_MAX];
-    uint16_t n = hitag_worker_get_sniff_log(app->worker, lens, vals);
+    uint16_t n = hitag_worker_get_sniff_log(app->worker, g_cmdlog_lens, g_cmdlog_vals);
 
     FuriString* body = furi_string_alloc();
     furi_string_printf(body, "%s\nReader commands: %u\n\n", label, n);
     for(uint16_t i = 0; i < n; i++) {
-        uint8_t l = lens[i];
-        uint32_t v = vals[i];
+        uint8_t l = g_cmdlog_lens[i];
+        uint32_t v = g_cmdlog_vals[i];
         uint8_t page = 0;
         switch(hitag_classify_frame(l, v, &page)) {
         case HitagFrameStartAuth:
@@ -674,14 +677,14 @@ static void hitag_write_cmd_log(HitagApp* app, const char* label, const char* pa
 }
 
 static void hitag_save_sniff_log(HitagApp* app) {
-    static uint8_t lens[HITAG_SNIFF_LOG_MAX];
-    static uint32_t vals[HITAG_SNIFF_LOG_MAX];
-    uint16_t n = hitag_worker_get_sniff_log(app->worker, lens, vals);
+    // shares g_cmdlog_lens/vals with hitag_write_cmd_log (GUI-thread, sequential); the password
+    // is read out here before that call refills the buffer.
+    uint16_t n = hitag_worker_get_sniff_log(app->worker, g_cmdlog_lens, g_cmdlog_vals);
     storage_simply_mkdir(app->storage, HITAG_DIR);
     uint32_t pw = 0;
     for(uint16_t i = 0; i < n; i++)
-        if(lens[i] >= 31 && lens[i] <= 34) {
-            pw = vals[i];
+        if(g_cmdlog_lens[i] >= 31 && g_cmdlog_lens[i] <= 34) {
+            pw = g_cmdlog_vals[i];
             break;
         }
     char ts[24];
@@ -1114,7 +1117,7 @@ static void hitag_save_autotune_log(HitagApp* app) {
     hitag_timestamp(ts, sizeof(ts));
     FuriString* body = furi_string_alloc();
     furi_string_cat_printf(
-        body, "Hitag2 autotune (preamble x T_wresp, leadbit=on)%s\n\n",
+        body, "Hitag2 autotune (preamble x T_wresp, leadbit=off)%s\n\n",
         app->at_locked ? " [LOCKED on a hit]" : "");
     for(uint8_t i = 0; i < HITAG_AT_NCOMBO; i++) {
         furi_string_cat_printf(

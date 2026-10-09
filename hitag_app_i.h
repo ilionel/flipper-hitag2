@@ -142,7 +142,7 @@ typedef struct {
     uint8_t last_pages[32]; // last read/loaded pages (for Save / Emulate / content)
     char scan_title[24]; // title carried from scan to content view
     char save_name[HITAG_NAME_LEN];
-    uint8_t emu_preamble; // emulate reply preamble length (default 5)
+    uint8_t emu_preamble; // emulate reply preamble length (default 4)
     uint32_t emu_wresp_us; // emulate reply T_wresp in us (default 1664)
     uint8_t emu_leadbit; // emulate reply: prepend a '0' data bit (default 0)
     uint8_t emu_lean; // emulate: skip live command log (min reply jitter, default 0)

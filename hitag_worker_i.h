@@ -181,7 +181,7 @@ struct HitagWorker {
     uint32_t sniff_82xx_pwd; // the captured 82xx password (MSB-aligned as transmitted)
 
     // emulate reply tuning (bench A/B of the framing shift)
-    uint8_t emu_preamble; // preamble '1' count (default 5)
+    uint8_t emu_preamble; // preamble '1' count (default 4)
     uint32_t emu_wresp_us; // T_wresp in us (default 1664)
     uint8_t emu_leadbit; // 1 = prepend a '0' data bit (clean preamble/data boundary)
     uint8_t emu_lean; // 1 = skip the live command-log write (min reply-path latency/jitter)
@@ -208,6 +208,16 @@ typedef enum {
     Ht2CmdRead, // READ page n (0b11..., 10b nominal)
     Ht2CmdPwd, // 32-bit password frame
 } Ht2CmdType;
+
+// Store a 32-bit page value MSB-first (as transmitted on air) into pageData[page*4 .. +3].
+// Single source of truth for the byte-split that was open-coded across the read/sniff paths
+// (a mistyped shift in one copy would silently corrupt a page).
+static inline void hitag_store_page(uint8_t* pageData, uint8_t page, uint32_t val) {
+    pageData[page * 4 + 0] = (uint8_t)(val >> 24);
+    pageData[page * 4 + 1] = (uint8_t)(val >> 16);
+    pageData[page * 4 + 2] = (uint8_t)(val >> 8);
+    pageData[page * 4 + 3] = (uint8_t)val;
+}
 
 
 // --- shared helpers (defined in hitag_worker.c, called across the protocol modules) ---
